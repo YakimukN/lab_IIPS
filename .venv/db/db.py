@@ -8,7 +8,7 @@ from nltk import download
 
 class Database():
     def __init__(self):
-        self.conn = sqlite3.connect("tfidf_documents.db")
+        self.conn = sqlite3.connect("tfidf_search.db")
         self.cursor = self.conn.cursor()
         self.vectorizer = TfidfVectorizer()
         self.create_tables()

@@ -24,8 +24,9 @@ class GUI(ctk.CTk):
         self._fill_tab_main()
         self._fill_tab_settings()
         self._fill_tab_help()
+        self.label_links = []
         self.result = []
-        
+
     def _create_tabs(self):
         self.tabview = ctk.CTkTabview(master=self, width=700, height=600)
         self.tabview.pack()
@@ -39,13 +40,13 @@ class GUI(ctk.CTk):
         self.tabview.add(self.tab_name_help)
 
         self.tabview.set(self.tab_name_main)
-    
+
     def _fill_tab_main(self):
         master = self.tabview.tab(self.tab_name_main)
         self.input_req = ctk.CTkEntry(master=master, placeholder_text="Request...", width=510)
         self.input_req.place(y=20, x=10)
 
-        self.btn_search = ctk.CTkButton(master=master, text="Search", width=140, command=self.btn_search) # command
+        self.btn_search = ctk.CTkButton(master=master, text="Search", width=140, command=self.btn_search)  # command
         self.btn_search.place(y=20, x=540)
 
         self.docs_label = ctk.CTkLabel(master=master, text="Documents:")
@@ -73,10 +74,12 @@ class GUI(ctk.CTk):
 
         self.var_rb_search_in = tk.StringVar(value=text_search_in_context)
 
-        self.rb_search_in_title = ctk.CTkRadioButton(master=master, text=text_search_in_title, variable=self.var_rb_search_in, value=text_search_in_title)
+        self.rb_search_in_title = ctk.CTkRadioButton(master=master, text=text_search_in_title,
+                                                     variable=self.var_rb_search_in, value=text_search_in_title)
         self.rb_search_in_title.place(y=30, x=10)
 
-        self.rb_search_in_context = ctk.CTkRadioButton(master=master, text=text_search_in_context, variable=self.var_rb_search_in, value=text_search_in_context)
+        self.rb_search_in_context = ctk.CTkRadioButton(master=master, text=text_search_in_context,
+                                                       variable=self.var_rb_search_in, value=text_search_in_context)
         self.rb_search_in_context.place(y=60, x=10)
 
     def _checkbox_choice_type(self, master):
@@ -90,16 +93,20 @@ class GUI(ctk.CTk):
 
         self.var_checkbox = tk.StringVar(value=text_checkbox_all_types)
 
-        self.choice_all_types = ctk.CTkCheckBox(master=master, text=text_checkbox_all_types, variable=self.var_checkbox, onvalue=text_checkbox_all_types)
+        self.choice_all_types = ctk.CTkCheckBox(master=master, text=text_checkbox_all_types, variable=self.var_checkbox,
+                                                onvalue=text_checkbox_all_types)
         self.choice_all_types.place(y=130, x=10)
 
-        self.choice_txt = ctk.CTkCheckBox(master=master, text=text_checkbox_txt, variable=self.var_checkbox, onvalue=text_checkbox_txt)
+        self.choice_txt = ctk.CTkCheckBox(master=master, text=text_checkbox_txt, variable=self.var_checkbox,
+                                          onvalue=text_checkbox_txt)
         self.choice_txt.place(y=160, x=10)
 
-        self.choice_pdf = ctk.CTkCheckBox(master=master, text=text_checkbox_pdf, variable=self.var_checkbox, onvalue=text_checkbox_pdf)
+        self.choice_pdf = ctk.CTkCheckBox(master=master, text=text_checkbox_pdf, variable=self.var_checkbox,
+                                          onvalue=text_checkbox_pdf)
         self.choice_pdf.place(y=190, x=10)
 
-        self.choice_docx = ctk.CTkCheckBox(master=master, text=text_checkbox_docx, variable=self.var_checkbox, onvalue=text_checkbox_docx)
+        self.choice_docx = ctk.CTkCheckBox(master=master, text=text_checkbox_docx, variable=self.var_checkbox,
+                                           onvalue=text_checkbox_docx)
         self.choice_docx.place(y=220, x=10)
 
     def _fill_tab_help(self):
@@ -118,10 +125,13 @@ class GUI(ctk.CTk):
         if not self.result:
             print("fault")
         else:
+            for label in self.label_links:
+                label.destroy()  # Удаляем каждый Label из окна
+            self.label_links.clear()
             y = 100
             for file in self.result:
                 self.create_link(master=self.tabview.tab(self.tab_name_main), filepath=file[0], y=y)
-                y+=30
+                y += 30
 
     def open_document(self, filepath):
         if os.path.exists(filepath):
@@ -133,3 +143,4 @@ class GUI(ctk.CTk):
         link = ctk.CTkLabel(master=master, text=filepath)
         link.place(x=20, y=y)
         link.bind("<Button-1>", lambda e: self.open_document(filepath))
+        self.label_links.append(link)
