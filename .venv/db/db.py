@@ -1,68 +1,93 @@
 import sqlite3
+import pickle
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from nltk.corpus import wordnet
+from nltk import download
 
 class Database():
     def __init__(self):
-        self.con = sqlite3.connect("IIPS_TDFIDF_test.db")
-        self.cursor = self.con.cursor()
-
-        # self.cursor.execute("""CREATE TABLE docs_tfidf
-        #         (title TEXT PRIMARY KEY,
-        #         type TEXT,
-        #         path TEXT,
-        #         tokens TEXT,
-        #         lemms TEXT,
-        #         stemms TEXT,
-        #         lemms_contecst TEXT)
-        #     """)
+        self.conn = sqlite3.connect("tfidf_documents.db")
+        self.cursor = self.conn.cursor()
+        self.vectorizer = TfidfVectorizer()
+        self.create_tables()
 
 
+    def create_tables(self):
+        self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS documents (
+                    id INTEGER PRIMARY KEY,
+                    path TEXT,
+                    tfidf_vector BLOB
+                )
+                """)
+        self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS vectorizer (
+                    id INTEGER PRIMARY KEY,
+                    vectorizer BLOB
+                )
+                """)
+        self.conn.commit()
 
+    def save_vectorizer_to_db(self):
+        serialized_vectorizer = pickle.dumps(self.vectorizer)
+        self.cursor.execute("INSERT OR REPLACE INTO vectorizer (id, vectorizer) VALUES (1, ?)", (serialized_vectorizer,))
+        self.conn.commit()
 
-        # data = [("first_title.txt", "2745 3765 23456 3457", ".txt", "D/folser/text.txt", "shgfs fdhgsk sfh sdfh gdfh gdfh dsfj"), ("second_title.txt", "asfsd, dfd, fdsf, dfas", ".txt", "D/folser/text.txt", "shgfs fdhgsk sfh sdfh gdfh gdfh dsfj")]
-        # self.cursor.executemany("INSERT INTO docs_tfidf (title, tf_idf, type, path, tokens) VALUES (?, ?, ?, ?, ?)", data)
-        # self.con.commit()
+    def load_vectorizer_from_db(self):
+        self.cursor.execute("SELECT vectorizer FROM vectorizer WHERE id = 1")
+        row = self.cursor.fetchone()
+        if row:
+            return pickle.loads(row[0])
+        else:
+            print("Database is empty")
+            # raise ValueError("Vectorizer not found in database")
 
-        # self.cursor.execute("SELECT * FROM docs_tfidf")
-        # print(self.cursor.fetchall())
+    def add_documents_to_db(self, documents, paths):
+        self.paths = paths
+        print(self.paths)
+        tfidf_matrix = self.vectorizer.fit_transform(documents)
 
-    @staticmethod
-    def add_doc(path, title, type, text):
-        print("path = ", path)
-        print("type = ", type)
-        print("title = ", title)
-        print("text = ", text)
-        print("method from db run")
-        
+        self.save_vectorizer_to_db()
 
+        for i, (doc, path) in enumerate(zip(documents, self.paths)):
+            tfidf_vector = pickle.dumps(tfidf_matrix[i].toarray())
+            self.cursor.execute("INSERT INTO documents (path, tfidf_vector) VALUES (?, ?)",
+                           (path, tfidf_vector))
+        self.conn.commit()
 
-# db = Database()
+    def search_query_in_db(self, request):
+        # Загружаем обученный векторизатор из базы данных
+        self.vectorizer = self.load_vectorizer_from_db()
+        expanded_query = self.expand_query_with_synonyms(request)  # Расширяем запрос синонимами
+        results = []
+        # Преобразуем запрос в TF-IDF вектор
+        if self.vectorizer:
+            query_vector = self.vectorizer.transform([expanded_query])
 
+            self.cursor.execute("SELECT id, path, tfidf_vector FROM documents")
+            for doc_id, path, tfidf_blob in self.cursor.fetchall():
+                tfidf_vector = pickle.loads(tfidf_blob)
+                # Вычисляем косинусное сходство
+                similarity = cosine_similarity(query_vector, np.array(tfidf_vector)).flatten()[0]
+                results.append((path, similarity))
 
+            results = sorted((x for x in results if x[1] > 0), key=lambda x: x[1], reverse=True)
+            print(results)
+        return results
 
+    def expand_query_with_synonyms(self, request):
+        words = request.split()
+        expanded_words = set(words)  # Начинаем с оригинальных слов
+        for word in words:
+            expanded_words.update(self.get_synonyms(word))
+        return ' '.join(expanded_words)
 
-
-
-
-
-
-
-
-
-# import sqlite3;
-#
-# con = sqlite3.connect("IIPS.db")
-# cursor = con.cursor()
-#
-# # данные для добавления
-# # people = [("Sam", 28), ("Alice", 33), ("Kate", 25)]
-# # cursor.executemany("INSERT INTO people (name, age) VALUES (?, ?)", people)
-# # выполняем транзакцию
-# # con.commit()
-
-
-# cursor.execute("""CREATE TABLE docs
-#                 (docName TEXT PRIMARY KEY,
-#                 type TEXT,
-#                 title TEXT,
-#                 path TEXT)
-#             """)
+    def get_synonyms(self, word):
+        synonyms = set()
+        for syn in wordnet.synsets(word):
+            for lemma in syn.lemmas():
+                synonyms.add(lemma.name().replace('_', ' '))
+        print(list(synonyms))
+        return list(synonyms)
