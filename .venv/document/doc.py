@@ -5,7 +5,6 @@ import os
 import PyPDF2
 from docx import Document
 
-
 class DocumentMy:
     def __init__(self):
         self.documents = []
@@ -19,11 +18,11 @@ class DocumentMy:
     def read_docs(self, path):
         self.directory_path = path
         # self.title, self.type = os.path.splitext(os.path.basename(self.path))
-        print(self.directory_path)
+        # print(self.directory_path)
         self._get_all_files()
         self._read_files()
-        print(self.documents)
-        print("paths = ", self.paths)
+        # print(self.documents)
+        # print("paths, TF-IDF = ", self.paths)
         self.bd.add_documents_to_db(self.documents, self.paths)
 
     def _get_all_files(self):
@@ -53,8 +52,8 @@ class DocumentMy:
             text = ''
             for page in reader.pages:
                 text += page.extract_text() + ' '
-        # print(text)
-        self.documents.append(text)
+        # print(text.lower())
+        self.documents.append(text.lower())
         # self.text = text
 
     def _read_docx_file(self, path):
@@ -62,16 +61,15 @@ class DocumentMy:
         text = ''
         for para in doc.paragraphs:
             text += para.text + ' '
-        self.documents.append(text)
+        self.documents.append(text.lower())
         
     def _read_txt_file(self, path):
         with open(path) as f:
             text = f.read()
-        self.documents.append(text)
+        self.documents.append(text.lower())
 
     def get_request(self, request):
         self.request = request
-        # bd = Database(self.request, self.documents, self.paths)
 
     def get_result(self):
         return self.bd.search_query_in_db(self.request)

@@ -13,7 +13,6 @@ class Database():
         self.vectorizer = TfidfVectorizer()
         self.create_tables()
 
-
     def create_tables(self):
         self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS documents (
@@ -58,18 +57,16 @@ class Database():
         self.conn.commit()
 
     def search_query_in_db(self, request):
-        # Загружаем обученный векторизатор из базы данных
         self.vectorizer = self.load_vectorizer_from_db()
-        expanded_query = self.expand_query_with_synonyms(request)  # Расширяем запрос синонимами
+        expanded_query = self.expand_query_with_synonyms(request)
         results = []
-        # Преобразуем запрос в TF-IDF вектор
         if self.vectorizer:
-            query_vector = self.vectorizer.transform([expanded_query])
+            query_vector = self.vectorizer.transform([expanded_query]) # запрос в TF-IDF вектор
 
             self.cursor.execute("SELECT id, path, tfidf_vector FROM documents")
             for doc_id, path, tfidf_blob in self.cursor.fetchall():
                 tfidf_vector = pickle.loads(tfidf_blob)
-                # Вычисляем косинусное сходство
+
                 similarity = cosine_similarity(query_vector, np.array(tfidf_vector)).flatten()[0]
                 results.append((path, similarity))
 
@@ -79,7 +76,7 @@ class Database():
 
     def expand_query_with_synonyms(self, request):
         words = request.split()
-        expanded_words = set(words)  # Начинаем с оригинальных слов
+        expanded_words = set(words)
         for word in words:
             expanded_words.update(self.get_synonyms(word))
         return ' '.join(expanded_words)
@@ -89,5 +86,5 @@ class Database():
         for syn in wordnet.synsets(word):
             for lemma in syn.lemmas():
                 synonyms.add(lemma.name().replace('_', ' '))
-        print(list(synonyms))
+        print("synonums = ", list(synonyms))
         return list(synonyms)
